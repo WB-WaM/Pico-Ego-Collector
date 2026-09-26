@@ -1,0 +1,5 @@
+# Python 3.10; install in the separate lerobot environment (see README.md).
+# H.264 is the export default. Use video_backend="pyav" for portable readback;
+# the default torchcodec backend additionally needs compatible FFmpeg libraries.
+lerobot==0.4.4
+pyarrow==24.0.0

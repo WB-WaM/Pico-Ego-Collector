@@ -1,0 +1,2121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pico Ego Episode Annotator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --surface-2: #eef1ed;
+      --ink: #1d2522;
+      --muted: #65716c;
+      --line: #d7ddd8;
+      --accent: #287c71;
+      --accent-2: #a5672a;
+      --danger: #b73b48;
+      --body: #2274a5;
+      --left: #d58d2a;
+      --right: #2d9d67;
+      --wuji: #7b5ab6;
+      --shadow: 0 1px 2px rgba(18, 28, 24, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 6px;
+      min-height: 34px;
+      padding: 0 12px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    button:hover { border-color: #aeb8b1; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.active { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+    button.warn { color: var(--danger); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 34px;
+      padding: 6px 8px;
+      width: 100%;
+    }
+
+    textarea {
+      min-height: 38px;
+      resize: vertical;
+      line-height: 1.25;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 106px 1fr;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr) auto;
+      grid-template-rows: 30px 44px;
+      align-items: center;
+      column-gap: 12px;
+      row-gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .session-controls {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: minmax(480px, 1.1fr) minmax(500px, 1fr);
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .control-group {
+      display: grid;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .import-group {
+      grid-template-columns: 54px minmax(200px, 1fr) 118px 86px;
+    }
+
+    .session-group {
+      grid-template-columns: 64px minmax(150px, 1fr) repeat(3, max-content);
+    }
+
+    .group-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .status {
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .left-pane, .right-pane {
+      min-height: 0;
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .left-pane {
+      grid-template-rows: minmax(220px, 1fr) minmax(132px, 0.38fr) minmax(170px, 0.62fr);
+    }
+
+    .right-pane {
+      grid-template-rows: minmax(130px, 0.55fr) minmax(380px, 1.65fr) minmax(260px, 0.8fr);
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .panel-body {
+      height: calc(100% - 38px);
+      min-height: 0;
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #111;
+      object-fit: contain;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #fbfcfa;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .g1-grid {
+      grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.55fr);
+    }
+
+    .timeline-panel .panel-body {
+      padding: 10px 12px;
+      display: grid;
+      grid-template-rows: 26px 1fr 36px;
+      gap: 8px;
+    }
+
+    .time-readout {
+      display: grid;
+      grid-template-columns: 120px 1fr 120px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+    }
+
+    #timeSlider {
+      padding: 0;
+      accent-color: var(--accent);
+    }
+
+    #timelineCanvas {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      height: 64px;
+    }
+
+    .camera-hint {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .camera-rate {
+      min-height: 26px;
+      padding: 2px 6px;
+      font-size: 12px;
+    }
+
+    .mark-controls {
+      display: grid;
+      grid-template-columns: 74px 74px minmax(160px, 1fr) 90px 74px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .head-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .head-actions button {
+      min-height: 26px;
+      padding: 0 8px;
+      box-shadow: none;
+      font-size: 12px;
+    }
+
+    .episode-panel .panel-body {
+      display: grid;
+      grid-template-rows: 1fr 42px;
+      min-height: 0;
+    }
+
+    .episode-list {
+      overflow: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 6px;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f7f8f6;
+      z-index: 1;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    tr.selected {
+      background: #eaf4f1;
+    }
+
+    .num-cell { width: 74px; }
+    .status-cell { width: 74px; }
+    .action-cell { width: 76px; }
+
+    .export-panel .panel-body {
+      padding: 10px;
+      display: grid;
+      grid-template-rows: auto auto auto minmax(180px, 1fr);
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .job-section {
+      display: grid;
+      gap: 5px;
+      min-height: 0;
+    }
+
+    .job-section-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .job-list {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      min-height: 30px;
+    }
+
+    .job-item {
+      flex: 0 0 220px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface-2);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .job-item.done { border-color: #8bb8aa; }
+    .job-item.error, .job-item.interrupted { border-color: #d19a9a; }
+    .job-item-title { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .job-item-detail { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .job-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(20, 28, 25, 0.45);
+    }
+
+    .job-modal {
+      width: min(620px, 100%);
+      max-height: min(80vh, 620px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.24);
+    }
+
+    .job-modal h3 { margin: 0; font-size: 16px; }
+    .job-modal-body { overflow: auto; white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
+    .job-modal-actions { display: flex; justify-content: flex-end; }
+
+    .job-drawer {
+      position: fixed;
+      top: 64px;
+      right: 14px;
+      z-index: 15;
+      width: min(420px, calc(100vw - 28px));
+      max-height: min(70vh, 620px);
+      overflow: auto;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+    }
+
+    .job-drawer-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .job-drawer-list { display: grid; gap: 7px; }
+    .job-drawer .job-item { width: auto; }
+
+    .export-form {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) 82px minmax(150px, 1fr) 68px 68px;
+      gap: 8px;
+      align-items: end;
+      min-width: 0;
+    }
+
+    .export-panel label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .export-env {
+      display: grid;
+      grid-template-columns: 74px 1fr;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .export-env code {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .export-output {
+      min-height: 220px;
+      height: 100%;
+      overflow: auto;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #161b19;
+      color: #dce5df;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1240px), (max-height: 760px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar { grid-template-rows: 30px auto; }
+      .session-controls { grid-template-columns: 1fr; }
+
+      .workspace {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .left-pane {
+        grid-template-rows: minmax(280px, 46vh) minmax(132px, auto) minmax(180px, 28vh);
+      }
+
+      .right-pane {
+        grid-template-rows: minmax(220px, 34vh) minmax(220px, 34vh) minmax(360px, auto);
+      }
+
+      .export-form {
+        grid-template-columns: minmax(160px, 1fr) 84px;
+      }
+
+      .export-form label:first-child,
+      .export-form label:nth-child(3) {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .topbar {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        height: auto;
+      }
+
+      .session-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .import-group, .session-group {
+        grid-template-columns: 1fr;
+      }
+
+      .export-form {
+        grid-template-columns: 1fr;
+      }
+
+      .status {
+        grid-column: 1 / -1;
+      }
+
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .g1-grid { grid-template-columns: 1fr; }
+
+      .mark-controls {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .mark-controls input {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">Pico Ego Collector</div>
+      <div id="status" class="status">Initializing</div>
+      <div class="top-actions">
+        <span id="sessionMeta" class="pill">--</span>
+        <button id="jobsBtn" title="View background export and preview jobs">Background jobs <span id="jobsBadge">0</span></button>
+        <button id="saveBtn" class="primary">Save annotations</button>
+      </div>
+      <div class="session-controls">
+        <div class="control-group import-group">
+          <span class="group-label">Import</span>
+          <input id="syncSourceInput" placeholder="Pico Download path">
+          <input id="syncDateInput" placeholder="YYYYMMDD" inputmode="numeric" maxlength="8" pattern="[0-9]{8}">
+          <button id="syncBtn" class="primary">Import</button>
+        </div>
+        <div class="control-group session-group">
+          <span class="group-label">Session</span>
+          <select id="sessionSelect"></select>
+          <button id="reloadBtn" title="Reload">Refresh</button>
+          <button id="redoBtn" class="warn" title="Clear processing cache for this session">Redo</button>
+          <button id="deleteSessionBtn" class="warn" title="Delete this imported session and all generated data">Delete data</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="left-pane">
+        <section class="panel">
+          <div class="panel-head">
+            <span>Camera</span>
+            <span class="head-actions">
+              <span class="camera-hint">←/→: ±3 s</span>
+              <label class="camera-hint" for="playbackRateSelect">Speed</label>
+              <select id="playbackRateSelect" class="camera-rate" title="Camera playback speed">
+                <option value="0.5">0.5×</option>
+                <option value="0.75">0.75×</option>
+                <option value="1" selected>1×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2×</option>
+              </select>
+              <span id="videoMeta" class="pill">--</span>
+            </span>
+          </div>
+          <div class="panel-body">
+            <video id="cameraVideo" controls preload="metadata"></video>
+          </div>
+        </section>
+
+        <section class="panel timeline-panel">
+          <div class="panel-head">
+            <span>Timeline</span>
+            <span id="draftMeta" class="pill">--</span>
+          </div>
+          <div class="panel-body">
+            <div class="time-readout">
+              <span id="currentTimeText">00:00.000</span>
+              <input id="timeSlider" type="range" min="0" max="1" value="0" step="0.001">
+              <span id="durationText">00:00.000</span>
+            </div>
+            <canvas id="timelineCanvas"></canvas>
+            <div class="mark-controls">
+              <button id="markStartBtn">Start</button>
+              <button id="markEndBtn">End</button>
+              <input id="promptInput" placeholder="Episode prompt">
+              <button id="addEpisodeBtn" class="primary" title="Add an episode with the current prompt">Add</button>
+              <button id="deleteBtn" class="warn">Delete</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel episode-panel">
+          <div class="panel-head">
+            <span>Episodes</span>
+            <span class="pill">Accepted episodes <span id="episodeCount">0</span> / <span id="episodeTotal">0</span></span>
+          </div>
+          <div class="panel-body">
+            <div class="episode-list">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="num-cell">Start</th>
+                    <th class="num-cell">End</th>
+                    <th>Prompt</th>
+                    <th class="status-cell">Status</th>
+                    <th class="action-cell"></th>
+                  </tr>
+                </thead>
+                <tbody id="episodeTable"></tbody>
+              </table>
+            </div>
+            <div></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="right-pane">
+        <section class="preview-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <span>Pico Body</span>
+              <span id="bodyMeta" class="pill">--</span>
+            </div>
+            <div class="panel-body">
+              <canvas id="bodyCanvas"></canvas>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <span>Pico Hands</span>
+              <span id="handMeta" class="pill">--</span>
+            </div>
+            <div class="panel-body">
+              <canvas id="handCanvas"></canvas>
+            </div>
+          </section>
+        </section>
+
+        <section class="preview-grid g1-grid">
+          <section class="panel g1-panel">
+            <div class="panel-head">
+              <span>G1 Retarget</span>
+              <span class="head-actions">
+                <button id="renderG1Btn">Generate</button>
+                <span id="g1Meta" class="pill">--</span>
+              </span>
+            </div>
+            <div class="panel-body">
+              <video id="g1PreviewVideo" class="hidden" controls muted playsinline preload="metadata"></video>
+              <canvas id="g1Canvas"></canvas>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel export-panel">
+          <div class="panel-head">
+            <span>LeRobot v3 / Logs</span>
+            <span id="exportMeta" class="pill">--</span>
+          </div>
+          <div class="panel-body">
+            <div class="export-form">
+              <label>Repo ID
+                <input id="repoIdInput" value="pico_ego/session">
+              </label>
+              <label>FPS
+                <input id="fpsInput" type="number" min="60" max="60" value="60" readonly>
+              </label>
+              <label>Output
+                <input id="outputDirInput" value="lerobot_v3/session">
+              </label>
+              <button id="dryRunBtn">Check</button>
+              <button id="exportBtn" class="primary">Export</button>
+            </div>
+            <div class="export-env">
+              <span>Runtime</span>
+              <code id="exportEnvText">--</code>
+            </div>
+            <div class="job-section">
+              <div class="job-section-title">Background jobs</div>
+              <div id="jobList" class="job-list"><span class="camera-hint">No background jobs</span></div>
+            </div>
+            <pre id="exportOutput" class="export-output">Waiting for an action
+
+Next: Click "Import" above to copy raw files from Pico Download.</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="jobModalBackdrop" class="job-modal-backdrop hidden">
+    <section class="job-modal" role="dialog" aria-modal="true" aria-labelledby="jobModalTitle">
+      <h3 id="jobModalTitle">Background job complete</h3>
+      <div id="jobModalBody" class="job-modal-body"></div>
+      <div class="job-modal-actions"><button id="jobModalClose" class="primary">Close</button></div>
+    </section>
+  </div>
+
+  <aside id="jobDrawer" class="job-drawer hidden" aria-label="Background job list">
+    <div class="job-drawer-head">
+      <strong>Background jobs</strong>
+      <button id="jobDrawerClose">Close</button>
+    </div>
+    <div id="jobDrawerList" class="job-drawer-list"></div>
+  </aside>
+
+  <script>
+    const state = {
+      sessionId: null,
+      sessions: [],
+      preview: null,
+      annotations: { episodes: [] },
+      exportConfig: null,
+      selectedEpisode: null,
+      draftStart: null,
+      draftEnd: null,
+      duration: 0,
+      loadGeneration: 0,
+      jobs: []
+    };
+
+    // Seeking the G1 preview on every main-video timeupdate causes visible
+    // stutter; during playback we only correct large drift occasionally.
+    let lastG1SoftSyncMs = 0;
+    const G1_SYNC_THRESHOLD = 0.08;
+    const G1_PLAYBACK_SYNC_THRESHOLD = 0.35;
+    const G1_PLAYBACK_SYNC_INTERVAL_MS = 1500;
+
+    const el = {
+      sessionSelect: document.getElementById('sessionSelect'),
+      reloadBtn: document.getElementById('reloadBtn'),
+      redoBtn: document.getElementById('redoBtn'),
+      deleteSessionBtn: document.getElementById('deleteSessionBtn'),
+      syncSourceInput: document.getElementById('syncSourceInput'),
+      syncDateInput: document.getElementById('syncDateInput'),
+      syncBtn: document.getElementById('syncBtn'),
+      status: document.getElementById('status'),
+      sessionMeta: document.getElementById('sessionMeta'),
+      video: document.getElementById('cameraVideo'),
+      videoMeta: document.getElementById('videoMeta'),
+      playbackRateSelect: document.getElementById('playbackRateSelect'),
+      slider: document.getElementById('timeSlider'),
+      currentTimeText: document.getElementById('currentTimeText'),
+      durationText: document.getElementById('durationText'),
+      timelineCanvas: document.getElementById('timelineCanvas'),
+      bodyCanvas: document.getElementById('bodyCanvas'),
+      handCanvas: document.getElementById('handCanvas'),
+      g1Canvas: document.getElementById('g1Canvas'),
+      g1Video: document.getElementById('g1PreviewVideo'),
+      wujiCanvas: document.getElementById('wujiCanvas'),
+      bodyMeta: document.getElementById('bodyMeta'),
+      handMeta: document.getElementById('handMeta'),
+      g1Meta: document.getElementById('g1Meta'),
+      wujiMeta: document.getElementById('wujiMeta'),
+      draftMeta: document.getElementById('draftMeta'),
+      promptInput: document.getElementById('promptInput'),
+      markStartBtn: document.getElementById('markStartBtn'),
+      markEndBtn: document.getElementById('markEndBtn'),
+      addEpisodeBtn: document.getElementById('addEpisodeBtn'),
+      deleteBtn: document.getElementById('deleteBtn'),
+      renderG1Btn: document.getElementById('renderG1Btn'),
+      saveBtn: document.getElementById('saveBtn'),
+      episodeTable: document.getElementById('episodeTable'),
+      episodeCount: document.getElementById('episodeCount'),
+      episodeTotal: document.getElementById('episodeTotal'),
+      repoIdInput: document.getElementById('repoIdInput'),
+      outputDirInput: document.getElementById('outputDirInput'),
+      fpsInput: document.getElementById('fpsInput'),
+      dryRunBtn: document.getElementById('dryRunBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      exportEnvText: document.getElementById('exportEnvText'),
+      exportOutput: document.getElementById('exportOutput'),
+      exportMeta: document.getElementById('exportMeta'),
+      jobList: document.getElementById('jobList'),
+      jobsBtn: document.getElementById('jobsBtn'),
+      jobsBadge: document.getElementById('jobsBadge'),
+      jobDrawer: document.getElementById('jobDrawer'),
+      jobDrawerClose: document.getElementById('jobDrawerClose'),
+      jobDrawerList: document.getElementById('jobDrawerList'),
+      jobModalBackdrop: document.getElementById('jobModalBackdrop'),
+      jobModalTitle: document.getElementById('jobModalTitle'),
+      jobModalBody: document.getElementById('jobModalBody'),
+      jobModalClose: document.getElementById('jobModalClose')
+    };
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, options);
+      const text = await response.text();
+      let payload = {};
+      try { payload = text ? JSON.parse(text) : {}; } catch { payload = { error: text }; }
+      if (!response.ok) throw new Error(payload.error || response.statusText);
+      return payload;
+    }
+
+    async function pollJob(jobId, onProgress, intervalMs = 600) {
+      while (true) {
+        const job = await api(`/api/job/${jobId}`);
+        if (onProgress) onProgress(job);
+        if (job.status !== 'running') return job;
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+      }
+    }
+
+    function progressLine(job) {
+      const p = job.progress || {};
+      if (!p.stage) return job.status === 'running' ? 'Starting...' : `status: ${job.status}`;
+      const pct = p.total ? Math.floor((Number(p.written || 0) / Number(p.total)) * 100) : null;
+      const count = (p.written != null && p.total != null) ? ` ${p.written}/${p.total}` : '';
+      return `progress: ${p.stage}${count}${pct != null ? ` (${pct}%)` : ''}`;
+    }
+
+    // Live tail of a running job's streamed output for the web terminal.
+    function logTail(job, maxLines = 40) {
+      const text = `${job.stderr || ''}${job.stdout || ''}`.replace(/\r/g, '\n');
+      const lines = text.split('\n').filter(line => line.length);
+      return lines.slice(-maxLines).join('\n');
+    }
+
+    function setStatus(text) {
+      el.status.textContent = text;
+    }
+
+    function setLog(lines) {
+      const text = Array.isArray(lines) ? lines.filter(line => line !== null && line !== undefined).join('\n') : String(lines || '');
+      el.exportOutput.textContent = text;
+      el.exportOutput.scrollTop = el.exportOutput.scrollHeight;
+    }
+
+    function jobLabel(job) {
+      const kind = job.kind === 'export' ? (job.dry_run ? 'Export check' : 'LeRobot export')
+        : job.kind === 'generate' ? 'G1 preview' : job.kind;
+      const status = {
+        running: 'Running', done: job.ok ? 'Done' : 'Failed', error: 'Failed', interrupted: 'Interrupted'
+      }[job.status] || job.status || '--';
+      return `${kind} · ${status}`;
+    }
+
+    function jobCardsHtml(jobs) {
+      return jobs.slice(0, 20).map(job => {
+        const progress = progressLine(job);
+        return `<div class="job-item ${escapeHtml(job.status || '')}">
+          <div class="job-item-title">${escapeHtml(jobLabel(job))}</div>
+          <div class="job-item-detail">${escapeHtml(job.session_id || '--')}</div>
+          <div class="job-item-detail">${escapeHtml(progress)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderJobList() {
+      const jobs = state.jobs || [];
+      const running = jobs.filter(job => job.status === 'running').length;
+      el.jobsBadge.textContent = String(running);
+      if (!jobs.length) {
+        el.jobList.innerHTML = '<span class="camera-hint">No background jobs</span>';
+        el.jobDrawerList.innerHTML = '<span class="camera-hint">No background jobs</span>';
+        return;
+      }
+      const cards = jobCardsHtml(jobs);
+      el.jobList.innerHTML = cards;
+      el.jobDrawerList.innerHTML = cards;
+    }
+
+    function showJobModal(job) {
+      const title = job.ok ? 'Background export complete' : 'Background export failed';
+      const output = `${job.stdout || ''}\n${job.stderr || ''}`.trim();
+      el.jobModalTitle.textContent = `${title}：${job.session_id || '--'}`;
+      el.jobModalBody.textContent = [
+        `Status: ${job.ok ? 'Success' : 'Failed'}`,
+        `Job: ${job.job_id || '--'}`,
+        job.output_dir ? `Output: ${job.output_dir}` : null,
+        job.progress ? progressLine(job) : null,
+        '',
+        output || 'No additional logs'
+      ].filter(item => item !== null).join('\n');
+      el.jobModalBackdrop.classList.remove('hidden');
+    }
+
+    async function refreshJobs() {
+      const payload = await api('/api/jobs');
+      state.jobs = payload.jobs || [];
+      renderJobList();
+    }
+
+    async function monitorJob(jobId, options = {}) {
+      const sessionId = options.sessionId || null;
+      const dryRun = Boolean(options.dryRun);
+      let finished;
+      try {
+        while (true) {
+          const job = await api(`/api/job/${jobId}`);
+          const index = state.jobs.findIndex(item => item.job_id === job.job_id);
+          if (index >= 0) state.jobs[index] = job;
+          else state.jobs.unshift(job);
+          renderJobList();
+          if (state.sessionId === sessionId) {
+            el.exportMeta.textContent = dryRun ? 'check' : (job.progress?.stage || 'export');
+            setLog([
+              dryRun ? '[Check LeRobot export]' : '[Export LeRobot v3]',
+              `session: ${sessionId}`,
+              `status: ${job.status}`,
+              progressLine(job),
+              '',
+              logTail(job),
+              '',
+              nextStep(dryRun ? 'Click "Export" after the check completes.' : 'You can annotate other sessions while export runs in the background.')
+            ]);
+          }
+          if (job.status !== 'running') {
+            finished = job;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 700));
+        }
+      } catch (error) {
+        setLog(`[Failed to read background job status]\n${error.message}`);
+        return;
+      }
+      if (finished && !dryRun) showJobModal(finished);
+      if (finished && state.sessionId === sessionId) {
+        el.exportMeta.textContent = finished.ok ? 'ok' : 'error';
+        if (dryRun && finished.ok) {
+          const summary = JSON.parse(finished.stdout);
+          const warnings = summary.warnings || [];
+          el.exportMeta.textContent = warnings.length ? 'warning' : 'ok';
+          setLog([
+            '[Export check complete]',
+            `session: ${sessionId}`,
+            `episodes: ${summary.episodes} / frames: ${summary.frames}`,
+            ...warnings.map(warning => warning.message),
+            nextStep(warnings.length ? 'Click "Export" and accept the warnings to continue.' : 'Click "Export".')
+          ]);
+        }
+      }
+      return finished;
+    }
+
+    function commandText(command) {
+      return Array.isArray(command) && command.length ? command.join(' ') : '';
+    }
+
+    // Read statuses from both current and pre-English servers.
+    function isProcessedSession(session) {
+      return ['processed', '\u5df2\u5904\u7406'].includes(session.processing_status);
+    }
+
+    function nextStep(text) {
+      return `Next: ${text}`;
+    }
+
+    function syncWarningLines(rows) {
+      const warningRows = (rows || []).filter(row => Array.isArray(row.warnings) && row.warnings.length);
+      if (!warningRows.length) return ['warnings: none'];
+      return [
+        `warnings: ${warningRows.length} sessions may have already been processed`,
+        ...warningRows.map(row => `WARNING ${row.session_id}: ${row.warnings.map(formatSyncWarning).join('；')}`)
+      ];
+    }
+
+    function formatSyncWarning(code) {
+      const labels = {
+        'raw already exists': 'Raw recording with this name already exists',
+        'raw unchanged': 'Raw files unchanged; copying skipped',
+        'has annotations': 'Episode annotations already exist',
+        'has processed csv': 'Per-frame analysis CSV already exists',
+        'has preview cache': 'Web preview cache already exists',
+        'has G1 retarget': 'G1 retargeting results already exist',
+        'has Wuji retarget': 'Wuji retargeting results already exist',
+        'has G1 MuJoCo preview': 'G1 MuJoCo preview already exists',
+        'has LeRobot v3 output': 'LeRobot v3 export already exists',
+        'raw is incomplete': 'Raw recording is missing tracking or video'
+      };
+      return labels[code] || code;
+    }
+
+    function fmtTime(value) {
+      const t = Math.max(0, Number(value) || 0);
+      const minutes = Math.floor(t / 60);
+      const seconds = Math.floor(t % 60);
+      const millis = Math.floor((t - Math.floor(t)) * 1000);
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+    }
+
+    function resizeCanvas(canvas) {
+      const ratio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width * ratio));
+      const height = Math.max(1, Math.floor(rect.height * ratio));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      return { ctx, w: rect.width, h: rect.height };
+    }
+
+    function updateSessionOptions(preferredId = null) {
+      el.sessionSelect.innerHTML = '';
+      for (const session of state.sessions) {
+        const option = document.createElement('option');
+        option.value = session.session_id;
+        const labels = [];
+        if (session.has_annotations) labels.push(`Annotated: ${session.annotation_count}`);
+        if (isProcessedSession(session)) labels.push('Processed');
+        const suffix = labels.length ? ` [${labels.join(' / ')}]` : '';
+        option.textContent = `${session.device_group ? `${session.device_group} / ` : ''}${session.session_id}${suffix}`;
+        el.sessionSelect.appendChild(option);
+      }
+      if (preferredId && state.sessions.some(session => session.session_id === preferredId)) {
+        el.sessionSelect.value = preferredId;
+      }
+    }
+
+    async function loadSessions(preferredId = null) {
+      setStatus('Loading sessions');
+      const payload = await api('/api/sessions');
+      state.sessions = payload.sessions || [];
+      updateSessionOptions(preferredId);
+      if (state.sessions.length) {
+        const target = preferredId && state.sessions.some(session => session.session_id === preferredId)
+          ? preferredId
+          : state.sessions[0].session_id;
+        await loadSession(target);
+      } else {
+        state.sessionId = null;
+        state.preview = null;
+        setStatus('No raw sessions found');
+        setLog([
+          '[Waiting for import]',
+          'No sessions are available under raw/.',
+          '',
+          nextStep('Connect the Pico, enter YYYYMMDD, and click "Import" above.')
+        ]);
+      }
+    }
+
+    async function syncPicoDownload() {
+      const dateText = el.syncDateInput.value.trim();
+      if (dateText && !/^\d{8}$/.test(dateText)) {
+        throw new Error('Use YYYYMMDD for the date, for example 20260712');
+      }
+      el.syncBtn.disabled = true;
+      setStatus('Importing Pico Download');
+      setLog([
+        '[Import data]',
+        `source: ${el.syncSourceInput.value.trim() || '(auto-detect Pico Download)'}`,
+        `date: ${dateText || '(all dates)'}`,
+        '',
+        'Copying raw tracking/video from Pico Download...',
+        nextStep('Wait for import to finish, then select a session to preview Pico video, body, and hands.')
+      ]);
+      const payload = await api('/api/sync_pico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: el.syncSourceInput.value.trim(),
+          date: dateText
+        })
+      });
+      if (!payload.ok) {
+        setLog([
+          '[Import failed]',
+          `date: ${dateText || '(all dates)'}`,
+          `command: ${commandText(payload.command)}`,
+          '',
+          (payload.stdout || '').trim(),
+          (payload.stderr || '').trim(),
+          '',
+          'Import did not complete. Previous import results are hidden; copied files are retained.',
+          nextStep('Check the connection or path using the error above. For MTP errors, wake and unlock the Pico, allow USB file transfer, reconnect USB, and retry.')
+        ]);
+        setStatus('Import failed');
+        return;
+      }
+      state.sessions = payload.sessions || [];
+      const imported = payload.imported_session_ids || [];
+      const pending = payload.pending_session_ids || [];
+      const target = pending[0] || state.sessionId || (state.sessions[0]?.session_id || null);
+      updateSessionOptions(target);
+      const rows = payload.rows || [];
+      const copied = rows.filter(row => row.tracking_status === 'copied' || row.video_status === 'copied').length;
+      const skipped = rows.filter(row => row.tracking_status === 'skipped' && row.video_status === 'skipped').length;
+      const warningLines = syncWarningLines(rows);
+      setLog([
+        '[Import data]',
+        `ok: ${payload.ok}`,
+        `command: ${commandText(payload.command)}`,
+        '',
+        (payload.stdout || '').trim(),
+        (payload.stderr || '').trim(),
+        '',
+        `matched sessions: ${rows.length}`,
+        `paired sessions: ${imported.length}`,
+        `pending sessions: ${pending.length}`,
+        `copied/skipped: ${copied}/${skipped}`,
+        imported.length ? `imported: ${imported.join(', ')}` : 'imported: (none)',
+        '',
+        ...warningLines,
+        '',
+        imported.length
+          ? nextStep(warningLines.length > 1
+            ? 'Skip recordings already processed. To regenerate one, select it and click "Redo".'
+            : 'Select an imported session and check its video and skeleton. Click "Save annotations" after marking episodes.')
+          : nextStep('Check that the Pico is mounted via MTP, or enter its Download path and a YYYYMMDD date.')
+      ]);
+      if (target) {
+        await loadSession(target);
+        setStatus(`Import complete: ${imported.length} sessions${payload.warning_count ? `, warnings: ${payload.warning_count}` : ''}`);
+      } else {
+        setStatus('Import complete: 0 sessions');
+      }
+    }
+
+    async function redoCurrentSession() {
+      if (!state.sessionId) return;
+      const ok = window.confirm(
+        `Redo ${state.sessionId}?\n\n` +
+        'This removes annotations, preview caches, G1/Wuji retargeting results, MuJoCo previews, and LeRobot exports for this session.\n' +
+        'Original raw video and tracking files will be kept.'
+      );
+      if (!ok) return;
+      el.redoBtn.disabled = true;
+      setStatus('Redo current session');
+      setLog([
+        '[Redo current session]',
+        `session: ${state.sessionId}`,
+        '',
+        'Removing annotations, preview caches, retargeting results, and LeRobot exports...',
+        nextStep('After cleanup, preview the raw recording and process or annotate it again as needed.')
+      ]);
+      const payload = await api('/api/redo_session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: state.sessionId })
+      });
+      state.sessions = payload.sessions || [];
+      updateSessionOptions(state.sessionId);
+      setLog([
+        '[Redo current session]',
+        `redo: ${payload.session_id}`,
+        `raw kept: ${payload.raw_kept}`,
+        '',
+        'removed:',
+        ...(payload.removed?.length ? payload.removed : ['(none)']),
+        '',
+        nextStep('Preview Pico video, body, and hands again; regenerate G1/Wuji results as needed.')
+      ]);
+      await loadSession(state.sessionId);
+      setStatus('Reset complete; raw data kept');
+    }
+
+    async function deleteCurrentSession() {
+      if (!state.sessionId) return;
+      const sessionId = state.sessionId;
+      const ok = window.confirm(
+        `Delete ${sessionId}?\n\n` +
+        'This deletes raw tracking, video, annotations, G1/Wuji results, previews, and LeRobot v3 exports.\n' +
+        'This cannot be undone.'
+      );
+      if (!ok) return;
+      el.deleteSessionBtn.disabled = true;
+      setStatus('Deleting current recording');
+      try {
+        const payload = await api('/api/delete_session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        state.sessions = payload.sessions || [];
+        const next = state.sessions[0]?.session_id || null;
+        updateSessionOptions(next);
+        setLog([
+          '[Delete data]',
+          `session: ${sessionId}`,
+          '',
+          'Deleted: ',
+          ...(payload.removed?.length ? payload.removed : ['(none)']),
+          '',
+          next ? nextStep('Switched to the next session.') : nextStep('No recordings remain. Import Pico data to continue.')
+        ]);
+        if (next) {
+          await loadSession(next);
+        } else {
+          state.sessionId = null;
+          state.preview = null;
+          setStatus('Deleted; no recordings remain');
+        }
+      } finally {
+        el.deleteSessionBtn.disabled = false;
+      }
+    }
+
+    async function loadExportConfig() {
+      state.exportConfig = await api('/api/export_config');
+      el.exportEnvText.textContent = state.exportConfig.label || '--';
+      el.exportMeta.textContent = state.exportConfig.mode || '--';
+    }
+
+    async function loadSession(sessionId) {
+      const loadGeneration = ++state.loadGeneration;
+      state.sessionId = sessionId;
+      state.preview = null;
+      state.selectedEpisode = null;
+      state.draftStart = null;
+      state.draftEnd = null;
+      el.promptInput.value = '';
+      el.repoIdInput.value = `pico_ego/${sessionId}`;
+      el.outputDirInput.value = `lerobot_v3/${sessionId}`;
+      el.video.src = `/media/video/${sessionId}`;
+      el.video.load();
+      setStatus('Loading annotations');
+      const annotations = await api(`/api/annotations/${sessionId}`);
+      // A user may switch sessions while the previous request is still
+      // loading. Never let a stale response overwrite the active session.
+      if (loadGeneration !== state.loadGeneration || state.sessionId !== sessionId) return;
+      state.annotations = annotations;
+      setStatus('Building preview cache');
+      const preview = await api(`/api/session/${sessionId}/preview?sample_hz=5`);
+      if (loadGeneration !== state.loadGeneration || state.sessionId !== sessionId) return;
+      state.preview = preview;
+      state.duration = preview.duration || 0;
+      setG1PreviewVideo(preview.g1_preview_video_url);
+      el.slider.max = String(Math.max(0.001, state.duration));
+      el.durationText.textContent = fmtTime(state.duration);
+      updateSessionMeta();
+      renderEpisodeTable();
+      renderAll();
+      setStatus('Ready');
+    }
+
+    function updateSessionMeta() {
+      const session = state.sessions.find(item => item.session_id === state.sessionId);
+      if (!session) return;
+      const flags = [
+        session.has_video ? 'video' : null,
+        session.has_g1 ? 'g1' : null,
+        session.has_wuji ? 'wuji' : null,
+        session.has_annotations ? `Annotated: ${session.annotation_count}` : null,
+        isProcessedSession(session) ? 'Processed' : null
+      ].filter(Boolean).join(' / ');
+      el.sessionMeta.textContent = flags || '--';
+      el.videoMeta.textContent = state.duration ? fmtTime(state.duration) : '--';
+    }
+
+    function currentTime() {
+      return Number(el.video.currentTime || el.slider.value || 0);
+    }
+
+    function setG1PreviewVideo(url) {
+      if (url) {
+        el.g1Video.src = `${url}?v=${Date.now()}`;
+        el.g1Video.playbackRate = Number(el.playbackRateSelect.value) || 1;
+        el.g1Video.load();
+        el.g1Video.classList.remove('hidden');
+        el.g1Canvas.classList.add('hidden');
+        el.g1Meta.textContent = 'mujoco mp4';
+        el.g1Video.addEventListener('loadedmetadata', () => syncG1Video(true), { once: true });
+      } else {
+        el.g1Video.removeAttribute('src');
+        el.g1Video.load();
+        el.g1Video.classList.add('hidden');
+        el.g1Canvas.classList.remove('hidden');
+      }
+    }
+
+    function syncG1Video(force = false) {
+      if (el.g1Video.classList.contains('hidden') || !el.g1Video.src || el.g1Video.readyState < 1) return;
+      const duration = Number.isFinite(el.g1Video.duration) ? el.g1Video.duration : state.duration;
+      const target = Math.max(0, Math.min(currentTime(), duration || currentTime()));
+      const drift = Math.abs((el.g1Video.currentTime || 0) - target);
+      const playing = !el.video.paused && !el.video.ended;
+
+      if (!force && playing) {
+        const now = performance.now();
+        if (drift < G1_PLAYBACK_SYNC_THRESHOLD || now - lastG1SoftSyncMs < G1_PLAYBACK_SYNC_INTERVAL_MS) {
+          return;
+        }
+        lastG1SoftSyncMs = now;
+      }
+
+      if (force || drift > G1_SYNC_THRESHOLD) {
+        el.g1Video.currentTime = target;
+      }
+    }
+
+    function nearestFrame(t) {
+      const frames = state.preview?.frames || [];
+      if (!frames.length) return null;
+      let lo = 0, hi = frames.length - 1;
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi + 1) / 2);
+        if (frames[mid].t <= t) lo = mid;
+        else hi = mid - 1;
+      }
+      if (lo < frames.length - 1 && Math.abs(frames[lo + 1].t - t) < Math.abs(frames[lo].t - t)) return frames[lo + 1];
+      return frames[lo];
+    }
+
+    function projectPoint(point, bounds, w, h) {
+      if (!point || point.some(v => v === null || Number.isNaN(v))) return null;
+      const min = bounds?.min || [-1, -1, -1];
+      const max = bounds?.max || [1, 1, 1];
+      const xRange = Math.max(0.01, max[0] - min[0]);
+      const zRange = Math.max(0.01, max[2] - min[2]);
+      const scale = Math.min((w - 28) / xRange, (h - 28) / zRange);
+      const cx = w / 2 - ((min[0] + max[0]) / 2) * scale;
+      const cy = h / 2 + ((min[2] + max[2]) / 2) * scale;
+      return [cx + point[0] * scale, cy - point[2] * scale];
+    }
+
+    function isFinitePoint(point) {
+      return point && point.length >= 3 && point.every(v => v !== null && Number.isFinite(v));
+    }
+
+    function wristLocal(points, active = true) {
+      if (!active || !points || !points.length || !isFinitePoint(points[0])) return [];
+      const origin = points[0];
+      return points.map(point => isFinitePoint(point)
+        ? [point[0] - origin[0], point[1] - origin[1], point[2] - origin[2]]
+        : point
+      );
+    }
+
+    function iso2(point) {
+      return [point[0] - point[1] * 0.48, -point[2] - point[1] * 0.22];
+    }
+
+    function isoBounds(pointSets) {
+      const flat = pointSets.flat().filter(isFinitePoint).map(iso2);
+      if (!flat.length) return { min: [-0.1, -0.1], max: [0.1, 0.1] };
+      const xs = flat.map(p => p[0]);
+      const ys = flat.map(p => p[1]);
+      const min = [Math.min(...xs), Math.min(...ys)];
+      const max = [Math.max(...xs), Math.max(...ys)];
+      for (let i = 0; i < 2; i++) {
+        const pad = Math.max(0.035, (max[i] - min[i]) * 0.18);
+        min[i] -= pad;
+        max[i] += pad;
+      }
+      return { min, max };
+    }
+
+    function projectIsoPoint(point, bounds, w, h) {
+      if (!isFinitePoint(point)) return null;
+      const p = iso2(point);
+      const min = bounds?.min || [-0.1, -0.1];
+      const max = bounds?.max || [0.1, 0.1];
+      const xRange = Math.max(0.01, max[0] - min[0]);
+      const yRange = Math.max(0.01, max[1] - min[1]);
+      const scale = Math.min((w - 26) / xRange, (h - 26) / yRange);
+      const cx = w / 2 - ((min[0] + max[0]) / 2) * scale;
+      const cy = h / 2 - ((min[1] + max[1]) / 2) * scale;
+      return [cx + p[0] * scale, cy + p[1] * scale];
+    }
+
+    function drawSkeleton(ctx, points, edges, bounds, w, h, color, pointColor = color) {
+      if (!points || !points.length) return;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = pointColor;
+      for (const [a, b] of edges || []) {
+        const pa = projectPoint(points[a], bounds, w, h);
+        const pb = projectPoint(points[b], bounds, w, h);
+        if (!pa || !pb) continue;
+        ctx.beginPath();
+        ctx.moveTo(pa[0], pa[1]);
+        ctx.lineTo(pb[0], pb[1]);
+        ctx.stroke();
+      }
+      for (const point of points) {
+        const p = projectPoint(point, bounds, w, h);
+        if (!p) continue;
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawSkeletonIso(ctx, points, edges, bounds, w, h, color, pointColor = color) {
+      if (!points || !points.length) return;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = pointColor;
+      for (const [a, b] of edges || []) {
+        const pa = projectIsoPoint(points[a], bounds, w, h);
+        const pb = projectIsoPoint(points[b], bounds, w, h);
+        if (!pa || !pb) continue;
+        ctx.beginPath();
+        ctx.moveTo(pa[0], pa[1]);
+        ctx.lineTo(pb[0], pb[1]);
+        ctx.stroke();
+      }
+      for (const point of points) {
+        const p = projectIsoPoint(point, bounds, w, h);
+        if (!p) continue;
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function localBounds(pointSets) {
+      const flat = pointSets.flat().filter(p => p && p.every(v => v !== null && Number.isFinite(v)));
+      if (!flat.length) return { min: [-0.2, -0.2, -0.2], max: [0.2, 0.2, 0.2] };
+      const mins = [0, 1, 2].map(i => Math.min(...flat.map(p => p[i])));
+      const maxs = [0, 1, 2].map(i => Math.max(...flat.map(p => p[i])));
+      for (let i = 0; i < 3; i++) {
+        const pad = Math.max(0.04, (maxs[i] - mins[i]) * 0.15);
+        mins[i] -= pad;
+        maxs[i] += pad;
+      }
+      return { min: mins, max: maxs };
+    }
+
+    function clearPanel(canvas, title) {
+      const { ctx, w, h } = resizeCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#fbfcfa';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#7a8580';
+      ctx.font = '13px system-ui';
+      ctx.fillText(title, 14, 22);
+      return { ctx, w, h };
+    }
+
+    function renderBody(frame) {
+      const { ctx, w, h } = clearPanel(el.bodyCanvas, 'Pico body');
+      if (!frame) return;
+      drawSkeleton(ctx, frame.body, state.preview.body_edges, state.preview.bounds, w, h, '#2274a5');
+      el.bodyMeta.textContent = frame.body?.length ? `${frame.body.length} joints` : '--';
+    }
+
+    function renderHands(frame) {
+      const { ctx, w, h } = clearPanel(el.handCanvas, 'Pico hands');
+      if (!frame) return;
+      const leftPoints = wristLocal(frame.left_hand || [], frame.left_active);
+      const rightPoints = wristLocal(frame.right_hand || [], frame.right_active);
+      const leftBounds = isoBounds([leftPoints]);
+      const rightBounds = isoBounds([rightPoints]);
+      ctx.save();
+      ctx.rect(0, 0, w / 2, h);
+      ctx.clip();
+      drawSkeletonIso(ctx, leftPoints, state.preview.hand_edges, leftBounds, w / 2, h, '#d58d2a');
+      ctx.restore();
+      ctx.save();
+      ctx.translate(w / 2, 0);
+      ctx.rect(0, 0, w / 2, h);
+      ctx.clip();
+      drawSkeletonIso(ctx, rightPoints, state.preview.hand_edges, rightBounds, w / 2, h, '#2d9d67');
+      ctx.restore();
+      el.handMeta.textContent = `${frame.left_active ? 'L' : '-'} ${frame.right_active ? 'R' : '-'}`;
+    }
+
+    function renderWuji(frame) {
+      const { ctx, w, h } = clearPanel(el.wujiCanvas, 'Wuji hand');
+      if (!frame) return;
+      const left = wristLocal(frame.wuji_left_points || [], frame.wuji_left_active !== false);
+      const right = wristLocal(frame.wuji_right_points || [], frame.wuji_right_active !== false);
+      const leftBounds = isoBounds([left]);
+      const rightBounds = isoBounds([right]);
+      ctx.save();
+      ctx.rect(0, 0, w / 2, h);
+      ctx.clip();
+      drawSkeletonIso(ctx, left, state.preview.mediapipe_hand_edges, leftBounds, w / 2, h, '#7b5ab6');
+      ctx.restore();
+      ctx.save();
+      ctx.translate(w / 2, 0);
+      ctx.rect(0, 0, w / 2, h);
+      ctx.clip();
+      drawSkeletonIso(ctx, right, state.preview.mediapipe_hand_edges, rightBounds, w / 2, h, '#287c71');
+      ctx.restore();
+      const dim = (frame.wuji_left_qpos?.length || 0) + (frame.wuji_right_qpos?.length || 0);
+      el.wujiMeta.textContent = dim ? `${dim} qpos` : '--';
+    }
+
+    function renderG1(frame) {
+      if (!el.g1Video.classList.contains('hidden')) {
+        // Avoid per-frame seeking while the main video is playing; play/pause
+        // handlers keep both streams aligned instead.
+        if (el.video.paused || el.video.ended) syncG1Video();
+        el.g1Meta.textContent = 'mujoco mp4';
+        return;
+      }
+      const { ctx, w, h } = clearPanel(el.g1Canvas, 'G1 qpos');
+      if (!frame || !frame.g1_qpos) {
+        el.g1Meta.textContent = '--';
+        return;
+      }
+      const qpos = frame.g1_qpos.filter(v => v !== null && Number.isFinite(v));
+      const margin = 18;
+      const barW = Math.max(2, (w - margin * 2) / qpos.length);
+      const mid = h * 0.55;
+      ctx.strokeStyle = '#d7ddd8';
+      ctx.beginPath();
+      ctx.moveTo(margin, mid);
+      ctx.lineTo(w - margin, mid);
+      ctx.stroke();
+      qpos.forEach((value, i) => {
+        const x = margin + i * barW;
+        const magnitude = Math.max(-1.5, Math.min(1.5, value)) / 1.5;
+        const y = mid - magnitude * (h * 0.34);
+        ctx.fillStyle = i < 7 ? '#a5672a' : '#287c71';
+        ctx.fillRect(x, Math.min(mid, y), Math.max(1, barW - 1), Math.max(1, Math.abs(mid - y)));
+      });
+      if (frame.g1_root) {
+        ctx.fillStyle = '#65716c';
+        ctx.font = '12px ui-monospace, monospace';
+        ctx.fillText(`root ${frame.g1_root.map(v => Number(v).toFixed(2)).join(' ')}`, 14, h - 14);
+      }
+      el.g1Meta.textContent = `${qpos.length} qpos`;
+    }
+
+    function renderTimeline() {
+      const { ctx, w, h } = resizeCanvas(el.timelineCanvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      const duration = Math.max(0.001, state.duration);
+      const episodes = state.annotations.episodes || [];
+      for (const episode of episodes) {
+        const x = (episode.start / duration) * w;
+        const ew = Math.max(2, ((episode.end - episode.start) / duration) * w);
+        ctx.fillStyle = episode.status === 'drop' ? 'rgba(183,59,72,0.24)' : 'rgba(40,124,113,0.28)';
+        ctx.fillRect(x, 15, ew, h - 30);
+        if (episode.episode_id === state.selectedEpisode) {
+          ctx.strokeStyle = '#287c71';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 1, 16, Math.max(1, ew - 2), h - 32);
+        }
+      }
+      if (state.draftStart !== null || state.draftEnd !== null) {
+        const anchor = state.draftStart ?? currentTime();
+        const liveEnd = state.draftEnd ?? currentTime();
+        const start = Math.min(anchor, liveEnd);
+        const end = Math.max(anchor, liveEnd);
+        const x = (start / duration) * w;
+        const ew = Math.max(2, ((end - start) / duration) * w);
+        const valid = state.draftEnd === null ? liveEnd >= anchor : state.draftEnd > state.draftStart;
+        ctx.fillStyle = valid ? 'rgba(165,103,42,0.28)' : 'rgba(183,59,72,0.22)';
+        ctx.fillRect(x, 8, ew, h - 16);
+        if (state.draftStart !== null) {
+          const sx = (state.draftStart / duration) * w;
+          ctx.strokeStyle = '#a5672a';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(sx, 4);
+          ctx.lineTo(sx, h - 4);
+          ctx.stroke();
+        }
+      }
+      const t = currentTime();
+      const cx = (t / duration) * w;
+      ctx.strokeStyle = '#1d2522';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, h);
+      ctx.stroke();
+    }
+
+    function renderAll() {
+      const t = currentTime();
+      const frame = nearestFrame(t);
+      el.slider.value = String(Math.min(state.duration || 0, t));
+      el.currentTimeText.textContent = fmtTime(t);
+      renderBody(frame);
+      renderHands(frame);
+      renderG1(frame);
+      renderTimeline();
+      renderDraftMeta();
+      renderDraftControls();
+    }
+
+    function renderDraftMeta() {
+      if (state.draftStart === null && state.draftEnd === null) {
+        el.draftMeta.textContent = '--';
+        return;
+      }
+      const start = state.draftStart;
+      const end = state.draftEnd;
+      const prefix = state.selectedEpisode === null ? 'new' : `edit #${state.selectedEpisode}`;
+      if (start === null || end === null) {
+        const liveEnd = end === null && start !== null ? currentTime() : end;
+        el.draftMeta.textContent = `${prefix} ${start === null ? '--' : fmtTime(start)} -> ${liveEnd === null ? '--' : fmtTime(liveEnd)}`;
+        return;
+      }
+      const invalid = end <= start ? ' invalid' : '';
+      el.draftMeta.textContent = `${prefix} ${fmtTime(start)} -> ${fmtTime(end)}${invalid}`;
+    }
+
+    function renderDraftControls() {
+      el.markStartBtn.classList.toggle('active', state.draftStart !== null && state.draftEnd === null);
+      el.markEndBtn.classList.toggle('active', state.draftStart !== null && state.draftEnd !== null);
+    }
+
+    function selectedEpisode() {
+      if (state.selectedEpisode === null) return null;
+      return (state.annotations.episodes || []).find(item => item.episode_id === state.selectedEpisode) || null;
+    }
+
+    function commitSelectedPrompt() {
+      const episode = selectedEpisode();
+      if (!episode) return;
+      episode.prompt = el.promptInput.value;
+    }
+
+    function normalizeEpisodes(selectedItem = null) {
+      const episodes = (state.annotations.episodes || [])
+        .slice()
+        .sort((a, b) => (Number(a.start) || 0) - (Number(b.start) || 0));
+      episodes.forEach((episode, index) => { episode.episode_id = index; });
+      state.annotations.episodes = episodes;
+      if (selectedItem && episodes.includes(selectedItem)) {
+        state.selectedEpisode = selectedItem.episode_id;
+      } else if (state.selectedEpisode !== null && !episodes.some(item => item.episode_id === state.selectedEpisode)) {
+        state.selectedEpisode = null;
+      }
+    }
+
+    function resetDraft() {
+      state.selectedEpisode = null;
+      state.draftStart = null;
+      state.draftEnd = null;
+    }
+
+    function selectEpisode(episode, options = {}) {
+      commitSelectedPrompt();
+      state.selectedEpisode = episode.episode_id;
+      state.draftStart = Number(episode.start);
+      state.draftEnd = Number(episode.end);
+      el.promptInput.value = episode.prompt || '';
+      if (options.seek) seekTo(episode.start);
+      renderEpisodeTable();
+      renderAll();
+    }
+
+    function renderEpisodeTable() {
+      const episodes = state.annotations.episodes || [];
+      el.episodeTable.innerHTML = '';
+      for (const episode of episodes) {
+        const row = document.createElement('tr');
+        row.dataset.episodeId = String(episode.episode_id);
+        if (episode.episode_id === state.selectedEpisode) row.classList.add('selected');
+        row.innerHTML = `
+          <td><input data-field="start" type="number" step="0.001" value="${episode.start}"></td>
+          <td><input data-field="end" type="number" step="0.001" value="${episode.end}"></td>
+          <td><textarea data-field="prompt">${escapeHtml(episode.prompt || '')}</textarea></td>
+          <td><select data-field="status"><option value="keep">keep</option><option value="drop">drop</option></select></td>
+          <td><button data-action="goto">Go to</button></td>
+        `;
+        row.querySelector('select').value = episode.status || 'keep';
+        row.addEventListener('click', event => {
+          if (event.target.closest('input, textarea, select, button')) return;
+          selectEpisode(episode);
+        });
+        row.querySelector('[data-action="goto"]').addEventListener('click', event => {
+          event.stopPropagation();
+          seekTo(episode.start);
+        });
+        row.querySelectorAll('[data-field]').forEach(input => {
+          input.addEventListener('click', event => event.stopPropagation());
+          input.addEventListener('focus', () => {
+            commitSelectedPrompt();
+            state.selectedEpisode = episode.episode_id;
+            state.draftStart = Number(episode.start);
+            state.draftEnd = Number(episode.end);
+            el.promptInput.value = episode.prompt || '';
+            el.episodeTable.querySelectorAll('tr.selected').forEach(item => item.classList.remove('selected'));
+            row.classList.add('selected');
+            renderTimeline();
+            renderDraftMeta();
+            updateEpisodeCount();
+          });
+          const updateField = event => {
+            const field = event.target.dataset.field;
+            if (field === 'start' || field === 'end') {
+              episode[field] = Number(event.target.value);
+              if (episode.episode_id === state.selectedEpisode) {
+                state.draftStart = Number(episode.start);
+                state.draftEnd = Number(episode.end);
+              }
+            } else {
+              episode[field] = event.target.value;
+              if (episode.episode_id === state.selectedEpisode) {
+                el.promptInput.value = episode.prompt || '';
+              }
+            }
+            renderTimeline();
+            renderDraftMeta();
+            updateEpisodeCount();
+          };
+          input.addEventListener('input', updateField);
+          input.addEventListener('change', updateField);
+        });
+        el.episodeTable.appendChild(row);
+      }
+      updateEpisodeCount();
+    }
+
+    function updateEpisodeCount() {
+      const episodes = state.annotations.episodes || [];
+      const qualified = episodes.filter(episode =>
+        (episode.status || 'keep') === 'keep' && String(episode.prompt || '').trim()
+      ).length;
+      el.episodeCount.textContent = String(qualified);
+      el.episodeTotal.textContent = String(episodes.length);
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+
+    function seekTo(t) {
+      const next = Math.max(0, Math.min(state.duration || 0, Number(t) || 0));
+      el.video.currentTime = next;
+      el.slider.value = String(next);
+      syncG1Video(true);
+      renderAll();
+    }
+
+    function seekBy(deltaSeconds) {
+      seekTo(currentTime() + deltaSeconds);
+    }
+
+    function setPlaybackRate(rate) {
+      const value = Number(rate) || 1;
+      el.video.playbackRate = value;
+      el.g1Video.playbackRate = value;
+    }
+
+    function setDraftBoundary(field) {
+      commitSelectedPrompt();
+      if (state.selectedEpisode !== null) {
+        state.selectedEpisode = null;
+      }
+      if (field === 'start') {
+        state.draftStart = currentTime();
+        state.draftEnd = null;
+        setStatus('Start set. Play or seek to the end, then click "End".');
+      } else {
+        if (state.draftStart === null) {
+          setStatus('Click "Start" first');
+          renderAll();
+          return;
+        }
+        state.draftEnd = currentTime();
+        el.video.pause();
+        if (!el.g1Video.classList.contains('hidden')) el.g1Video.pause();
+        setStatus(state.draftEnd > state.draftStart ? 'End set. Enter a prompt and click "Add".' : 'End must be after start');
+      }
+      renderEpisodeTable();
+      renderAll();
+    }
+
+    function upsertEpisode() {
+      const start = state.draftStart;
+      const end = state.draftEnd;
+      const prompt = el.promptInput.value.trim();
+      if (start === null || end === null) {
+        setStatus('Set start and end first');
+        return;
+      }
+      if (!(end > start)) {
+        setStatus('Invalid episode range: end must be after start');
+        return;
+      }
+      if (!prompt) {
+        setStatus('Enter an episode prompt');
+        return;
+      }
+      const episodes = state.annotations.episodes || [];
+      let edited = null;
+      if (state.selectedEpisode !== null) {
+        const existing = episodes.find(item => item.episode_id === state.selectedEpisode);
+        if (existing) {
+          existing.start = Number(start.toFixed(4));
+          existing.end = Number(end.toFixed(4));
+          existing.prompt = prompt;
+          edited = existing;
+        }
+      } else {
+        episodes.push({
+          episode_id: episodes.length,
+          start: Number(start.toFixed(4)),
+          end: Number(end.toFixed(4)),
+          prompt,
+          status: 'keep',
+          notes: ''
+        });
+      }
+      if (edited) {
+        normalizeEpisodes(edited);
+      } else {
+        normalizeEpisodes();
+        resetDraft();
+      }
+      renderEpisodeTable();
+      renderAll();
+      setStatus(edited ? 'Episode updated' : 'Episode added');
+    }
+
+    async function saveAnnotations() {
+      if (!state.sessionId) return;
+      commitSelectedPrompt();
+      normalizeEpisodes(selectedEpisode());
+      setStatus('Save annotations');
+      state.annotations = await api(`/api/annotations/${state.sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state.annotations)
+      });
+      renderEpisodeTable();
+      renderAll();
+      setStatus('Saved');
+      setLog([
+        '[Save annotations]',
+        `session: ${state.sessionId}`,
+        `episodes: ${(state.annotations.episodes || []).length}`,
+        '',
+        'Annotations saved to the session annotations/ directory in the configured work directory.',
+        nextStep('Mark more episodes, or click "Check" for a LeRobot export dry run.')
+      ]);
+    }
+
+    async function runExport(dryRun) {
+      const sessionId = state.sessionId;
+      if (!sessionId) return;
+      state.exportSubmissions ||= new Set();
+      if (state.exportSubmissions.has(sessionId)) return;
+      if ((state.jobs || []).some(job =>
+        job.kind === 'export' && job.session_id === sessionId && job.status === 'running'
+      )) {
+        setStatus('An export is already running for this session');
+        return;
+      }
+      const repoId = el.repoIdInput.value.trim();
+      const outputDir = el.outputDirInput.value.trim();
+      state.exportSubmissions.add(sessionId);
+      const submit = async (check, allowMissingHands = false) => {
+        const job = await api('/api/export_lerobot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            repo_id: repoId,
+            output_dir: outputDir,
+            fps: 60,
+            dry_run: check,
+            allow_missing_hands: allowMissingHands
+          })
+        });
+        state.jobs = [job, ...(state.jobs || []).filter(item => item.job_id !== job.job_id)];
+        renderJobList();
+        return job;
+      };
+      try {
+        await saveAnnotations();
+        el.exportMeta.textContent = 'check';
+        setLog(['[Pre-export check]', `session: ${sessionId}`, 'Checking annotations, frame counts, and missing hand observations...']);
+        // Check automatically even if the user did not press the separate check button.
+        const checkJob = await submit(true);
+        const checked = await monitorJob(checkJob.job_id, { sessionId, dryRun: true });
+        if (!checked?.ok || dryRun) return;
+        const summary = JSON.parse(checked.stdout);
+        let allowMissingHands = false;
+        if (summary.requires_hand_confirmation) {
+          allowMissingHands = window.confirm([
+            `session: ${sessionId}`,
+            ...(summary.warnings || []).map(warning => warning.message),
+            '', 'Continue exporting? Cancel keeps saved annotations and does not create a dataset.'
+          ].join('\n'));
+          if (!allowMissingHands) {
+            setStatus('Export cancelled; annotations saved');
+            el.exportMeta.textContent = 'cancelled';
+            return;
+          }
+        }
+        const job = await submit(false, allowMissingHands);
+        void monitorJob(job.job_id, { sessionId, dryRun: false });
+      } catch (error) {
+        setLog(`[Failed to submit job]\n${error.message}`);
+        el.exportMeta.textContent = 'error';
+      } finally {
+        state.exportSubmissions.delete(sessionId);
+      }
+    }
+
+    const G1_STAGE_LABEL = {
+      g1_retarget: 'G1 retarget',
+      wuji_retarget: 'Wuji retarget',
+      render: 'Rendering G1 MuJoCo MP4',
+      done: 'Done'
+    };
+
+    async function renderG1Preview() {
+      if (!state.sessionId) return;
+      el.renderG1Btn.disabled = true;
+      el.g1Meta.textContent = 'gen';
+      setStatus('Generating G1 preview');
+      const header = '[Generating G1 preview]';
+      setLog([
+        header,
+        `session: ${state.sessionId}`,
+        '',
+        'Generating G1 retargeting → G1 MuJoCo MP4 (Wuji hand retargeting skipped)...',
+        nextStep('The G1 panel will show the MuJoCo MP4 when ready.')
+      ]);
+      const job = await api('/api/render_g1_preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: state.sessionId, preview_fps: 15, width: 640, height: 360, camera_azimuth: 265 })
+      });
+      const finished = await pollJob(job.job_id, current => {
+        const stage = current.progress?.stage || current.stage || '';
+        el.g1Meta.textContent = stage || 'gen';
+        setStatus('Generating: ' + (G1_STAGE_LABEL[stage] || stage || '...'));
+        setLog([
+          header,
+          `status: ${current.status}`,
+          `stage: ${G1_STAGE_LABEL[stage] || stage || '--'}`,
+          '',
+          logTail(current),
+          '',
+          nextStep('Generating; keep this page open...')
+        ]);
+      });
+      const stage = finished.stage || finished.progress?.stage || '';
+      setLog([
+        header,
+        `ok: ${finished.ok}`,
+        `stage: ${G1_STAGE_LABEL[stage] || stage || '--'}`,
+        '',
+        (finished.stderr || '').trim(),
+        (finished.stdout || '').trim(),
+        '',
+        nextStep(finished.ok
+          ? 'Seek in the main video to check G1 synchronization. The Wuji panel shows hand qpos/skeleton data when available.'
+          : (stage === 'g1_retarget'
+            ? 'Check that tracking contains Body.joints and GMR dependencies (including mink) are installed, then click "Generate" again.'
+            : stage === 'wuji_retarget'
+            ? 'Check that tracking contains Hand data and Wuji dependencies are installed, then click "Generate" again.'
+            : 'Check the MuJoCo/G1 XML and rendering setup, then click "Generate" again.'))
+      ]);
+      if (!finished.ok) {
+        el.g1Meta.textContent = 'error';
+        setStatus('Generation failed: ' + (G1_STAGE_LABEL[stage] || stage || ''));
+        return;
+      }
+      const session = state.sessions.find(item => item.session_id === state.sessionId);
+      if (session) {
+        session.has_g1 = true;
+        session.has_g1_preview_video = true;
+      }
+      state.preview = await api(`/api/session/${state.sessionId}/preview?sample_hz=5`);
+      state.duration = state.preview.duration || state.duration;
+      setG1PreviewVideo(state.preview.g1_preview_video_url || finished.preview_url);
+      updateSessionMeta();
+      renderAll();
+      el.g1Meta.textContent = 'ok';
+      setStatus('G1 preview ready');
+    }
+
+    el.sessionSelect.addEventListener('change', () => loadSession(el.sessionSelect.value).catch(err => setStatus(err.message)));
+    el.reloadBtn.addEventListener('click', () => loadSession(state.sessionId).catch(err => setStatus(err.message)));
+    el.redoBtn.addEventListener('click', () => redoCurrentSession().catch(err => {
+      setStatus(err.message);
+      setLog(['[Reset failed]', err.message, '', nextStep('Check that the current session still exists under raw/.')]);
+    }).finally(() => {
+      el.redoBtn.disabled = false;
+    }));
+    el.deleteSessionBtn.addEventListener('click', () => deleteCurrentSession().catch(err => {
+      setStatus(err.message);
+      setLog(['[Delete failed]', err.message]);
+    }));
+    el.syncBtn.addEventListener('click', () => syncPicoDownload().catch(err => {
+      setStatus(err.message);
+      setLog(['[Import failed]', err.message, '', nextStep('Use a YYYYMMDD date and check the Pico Download path.')]);
+    }).finally(() => {
+      el.syncBtn.disabled = false;
+    }));
+    el.video.addEventListener('timeupdate', renderAll);
+    el.video.addEventListener('play', () => {
+      lastG1SoftSyncMs = 0;
+      syncG1Video(true);
+      if (!el.g1Video.classList.contains('hidden')) el.g1Video.play().catch(() => {});
+    });
+    el.video.addEventListener('pause', () => {
+      if (!el.g1Video.classList.contains('hidden')) {
+        el.g1Video.pause();
+        syncG1Video(true);
+      }
+    });
+    el.video.addEventListener('seeking', () => syncG1Video(true));
+    el.video.addEventListener('timeupdate', () => {
+      if (el.video.paused || el.g1Video.classList.contains('hidden')) return;
+      syncG1Video(false);
+    });
+    el.video.addEventListener('loadedmetadata', () => {
+      state.duration = state.preview?.duration || el.video.duration || 0;
+      el.slider.max = String(Math.max(0.001, state.duration));
+      el.durationText.textContent = fmtTime(state.duration);
+      renderAll();
+    });
+    el.playbackRateSelect.addEventListener('change', event => setPlaybackRate(event.target.value));
+    el.slider.addEventListener('input', event => seekTo(event.target.value));
+    el.markStartBtn.addEventListener('click', () => setDraftBoundary('start'));
+    el.markEndBtn.addEventListener('click', () => setDraftBoundary('end'));
+    el.promptInput.addEventListener('input', () => {
+      const episode = selectedEpisode();
+      if (!episode) return;
+      episode.prompt = el.promptInput.value;
+      const textarea = el.episodeTable.querySelector(`tr[data-episode-id="${episode.episode_id}"] textarea[data-field="prompt"]`);
+      if (textarea && document.activeElement !== textarea) textarea.value = episode.prompt || '';
+      updateEpisodeCount();
+    });
+    el.addEpisodeBtn.addEventListener('click', upsertEpisode);
+    document.addEventListener('keydown', event => {
+      const target = event.target;
+      const isRangeSlider = target && target.matches('input[type="range"]');
+      const isTextEntry = target && (
+        target.matches('input:not([type="range"]), textarea, select, button') || target.isContentEditable
+      );
+      if (isTextEntry && !isRangeSlider) return;
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        event.stopPropagation();
+        seekBy(-3);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        event.stopPropagation();
+        seekBy(3);
+      }
+    }, true);
+    el.deleteBtn.addEventListener('click', () => {
+      if (state.selectedEpisode === null) return;
+      state.annotations.episodes = (state.annotations.episodes || [])
+        .filter(item => item.episode_id !== state.selectedEpisode)
+        .map((item, index) => ({ ...item, episode_id: index }));
+      state.selectedEpisode = null;
+      renderEpisodeTable();
+      renderAll();
+    });
+    el.saveBtn.addEventListener('click', () => saveAnnotations().catch(err => setStatus(err.message)));
+    el.jobsBtn.addEventListener('click', () => {
+      el.jobDrawer.classList.toggle('hidden');
+    });
+    el.jobDrawerClose.addEventListener('click', () => el.jobDrawer.classList.add('hidden'));
+    el.jobModalClose.addEventListener('click', () => el.jobModalBackdrop.classList.add('hidden'));
+    el.renderG1Btn.addEventListener('click', () => renderG1Preview().catch(err => {
+      setStatus(err.message);
+      setLog(['[G1 preview failed]', err.message, '', nextStep('Run GMR retargeting to create <session_id>_unitree_g1.pkl, then click "Generate" again.')]);
+      el.g1Meta.textContent = 'error';
+    }).finally(() => { el.renderG1Btn.disabled = false; }));
+    el.dryRunBtn.addEventListener('click', () => runExport(true).catch(err => {
+      setLog(['[Check failed]', err.message, '', nextStep('Check that each episode has a prompt and the G1 trajectory has been generated.')]);
+      el.exportMeta.textContent = 'error';
+    }));
+    el.exportBtn.addEventListener('click', () => runExport(false).catch(err => {
+      setLog(['[Export failed]', err.message, '', nextStep('Click "Check" to validate the schema, frame counts, and required files.')]);
+      el.exportMeta.textContent = 'error';
+    }));
+    window.addEventListener('resize', renderAll);
+
+    async function init() {
+      await loadExportConfig();
+      try {
+        await refreshJobs();
+      } catch (error) {
+        el.jobList.innerHTML = `<span class="camera-hint">Job API unavailable: ${escapeHtml(error.message)}</span>`;
+      }
+      await loadSessions();
+    }
+
+    init().catch(err => setStatus(err.message));
+  </script>
+</body>
+</html>

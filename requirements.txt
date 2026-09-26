@@ -1,0 +1,28 @@
+# Python 3.10; run from the repository root after initializing submodules.
+numpy==2.2.6
+pandas==2.3.3
+matplotlib==3.10.9
+mujoco==3.10.0
+opencv-python==5.0.0.93
+PyYAML==6.0.3
+scipy==1.15.3
+tabulate==0.10.0
+tqdm==4.68.3
+# GMR's offline Pico path is imported directly from the pinned submodule.
+# It does not require SMPL-X models or the live XRobot streaming SDK.
+torch==2.10.0
+mink==1.2.0
+qpsolvers[daqp]==4.12.0
+loop-rate-limiters==1.2.0
+rich==15.0.0
+imageio[ffmpeg]==2.37.3
+
+# Use the same Wuji source tree as the command-line tools.
+-e ./third-party/wuji-retargeting
+wuji-sdk==2026.7.2
+nlopt==2.10.0
+# Keep the Pinocchio/URDF shared-library ABI consistent.
+pin==3.8.0
+libpinocchio==3.8.0
+cmeel-urdfdom==4.0.1
+cmeel-tinyxml2==10.0.0

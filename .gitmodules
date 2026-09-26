@@ -1,0 +1,6 @@
+[submodule "third-party/GMR"]
+	path = third-party/GMR
+	url = https://github.com/YanjieZe/GMR.git
+[submodule "third-party/wuji-retargeting"]
+	path = third-party/wuji-retargeting
+	url = https://github.com/wuji-technology/wuji-retargeting.git

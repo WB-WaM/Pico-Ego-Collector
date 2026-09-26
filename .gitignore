@@ -1,0 +1,87 @@
+# Publish the raw -> annotation -> GMR/Wuji -> LeRobot pipeline only.
+# New core entry points must be added to the allowlists below. Everything else
+# remains local: recordings, archives, MINT/SONIC experiments, task-specific
+# solvers, galleries, reports, environments and machine-specific settings.
+/*
+!/.gitignore
+!/.gitmodules
+!/README.md
+!/README_zh.md
+!/LICENSE
+!/requirements.txt
+!/requirements_lerobot.txt
+!/install.sh
+!/start_data_web.sh
+!/src/
+!/scripts/
+!/configs/
+!/docs/
+!/web/
+!/tests/
+!/third-party/
+!/raw/
+!/lerobot_v3/
+
+# Core command-line tools and the annotator's subprocess dependencies.
+/scripts/*
+!/scripts/analyze_dataset.py
+!/scripts/consolidate_lerobot_v3.py
+!/scripts/export_lerobot_v3.py
+!/scripts/lerobot_export_video.py
+!/scripts/render_g1_mujoco_preview.py
+!/scripts/retarget_pico_hand_to_wuji.py
+!/scripts/retarget_pico_to_g1.py
+!/scripts/serve_annotator.py
+!/scripts/stop_annotator.py
+!/scripts/sync_pico_download.py
+!/scripts/visualize_tracking_mujoco.py
+!/scripts/visualize_wuji_qpos_mujoco.py
+!/scripts/test_pico_wuji_mapping.py
+
+# The web default and the reusable customer hand configuration.
+/configs/*
+!/configs/wuji_retarget_pico_best.yaml
+!/configs/wuji_retarget_pico_customer.yaml
+
+/docs/*
+!/docs/pipeline_reference.md
+!/docs/lerobot_v3_release_spec.md
+!/docs/images/
+/docs/images/*
+!/docs/images/annotator-preview.png
+
+/web/*
+!/web/annotator.html
+
+# Regression checks for the published pipeline; task experiments stay local.
+/tests/*
+!/tests/test_pico_import.py
+!/tests/test_export_missing_hands.py
+!/tests/test_stop_annotator.py
+!/tests/test_annotator_import.cjs
+!/tests/test_annotator_export.cjs
+
+# Keep the two upstream submodules, not vendored training projects/checkpoints.
+/third-party/*
+!/third-party/GMR/
+!/third-party/wuji-retargeting/
+
+# Keep empty data roots available in a fresh clone.
+/raw/*
+!/raw/.gitkeep
+/lerobot_v3/*
+!/lerobot_v3/.gitkeep
+
+# Runtime files are never source code, even inside an allowed directory.
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+*.pid
+*.tmp
+*.partial
+*.swp
+*~
